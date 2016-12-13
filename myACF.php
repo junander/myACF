@@ -5,6 +5,19 @@
  * To simplify generating Advanced Custom Fields
  * Depends on Advanced Custom Fields Pro Plugin v.5+
  * 
+ * Final output is a fully formed register_field_group() call
+ * 
+ * Template call:
+ * 
+ * $args['options'] = array(
+ * );
+ * $args['location'] = array(
+ * );
+ * $args['fields'] = array(
+ * );
+ * 
+ * $myField = new myACF($args);
+ * 
  * @author junander
  * @version: 0.1
  */
@@ -49,7 +62,7 @@ class myACF {
         if (empty($args['location'])) {
             $this->location = $this->build_location($this->default_location());
         } else {
-            $this->location = $args['location'];
+            $this->location = $this->build_location($args['location']);
         }
 
         //set user submitted fields to fields object
@@ -90,9 +103,11 @@ class myACF {
     function default_location() {
 
         return array(
-            'param' => 'post_type',
-            'operator' => '==',
-            'value' => 'post',
+            array(
+                'param' => 'post_type',
+                'operator' => '==',
+                'value' => 'post',
+            )
         );
     }
 
@@ -283,11 +298,30 @@ class myACF {
             $field_defaults = array_merge($field_defaults, $this_ary);
         }
 
+        if (in_array($type, array('file'))) {
+            $this_ary = array(
+                'return_format' => 'array',
+                'library' => 'all',
+                'min_size' => '',
+                'max_size' => '',
+                'mime_types' => '',
+            );
+            $field_defaults = array_merge($field_defaults, $this_ary);
+        }
+
         if (in_array($type, array('repeater'))) {
             $this_ary = array(
                 'layout' => 'row',
                 'button_label' => 'Add Row',
                 'sub_fields' => array(),
+            );
+            $field_defaults = array_merge($field_defaults, $this_ary);
+        }
+
+        if (in_array($type, array('message'))) {
+            $this_ary = array(
+                'message' => '',
+                'esc_html' => 0,
             );
             $field_defaults = array_merge($field_defaults, $this_ary);
         }
@@ -314,7 +348,7 @@ class myACF {
         //check to make sure location is ready for parsing
         if (is_array($locations) && !empty($locations)) {
             foreach ($locations as $location) {
-                $location_return[] = array(array($location));
+                $location_return[] = array($location);
             }
         }
 
@@ -337,8 +371,8 @@ class myACF {
             if (isset($field['type'])) {
                 $this_field = wp_parse_args($field, $this->field_defaults($field['type']));
 
-                //fallback for name
-                if ($field['name'] == '') {
+                //fallback for name'
+                if (!array_key_exists('name', $field) || $field['name'] == '') {
                     $this_field['name'] = str_replace('-', '_', sanitize_title($field['label']));
                 } else {
                     $this_field['name'] = str_replace('-', '_', sanitize_title($field['name']));
@@ -498,7 +532,7 @@ class myACF {
 
         $array_prep = array(
             'fields' => $this->fields,
-            'location' => array($this->location),
+            'location' => $this->location,
         );
 
         $field_array = array_merge($array_prep, $this->core_options);
